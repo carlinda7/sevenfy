@@ -171,10 +171,15 @@ function AuthPage() {
                     type="button"
                     onClick={() => setShow((value) => !value)}
                     aria-label={show ? "Ocultar senha" : "Mostrar senha"}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground hover:text-foreground"
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground transition-colors hover:text-foreground"
                   >
-                    {show ? "🙈" : "👁️"}
+                    {show ? (
+                      <EyeOff className="size-4" aria-hidden />
+                    ) : (
+                      <Eye className="size-4" aria-hidden />
+                    )}
                   </button>
+
                 </span>
               </label>
 
