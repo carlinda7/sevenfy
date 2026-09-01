@@ -101,6 +101,76 @@ function kindMeta(kind: string) {
   return KIND_META[kind] ?? { label: kind, icon: Activity };
 }
 
+type Period = "hoje" | "7d" | "30d" | "total" | "custom";
+
+const PERIODS: { value: Period; label: string; icon: typeof CalendarDays }[] = [
+  { value: "hoje", label: "Hoje", icon: CalendarDays },
+  { value: "7d", label: "7 dias", icon: CalendarRange },
+  { value: "30d", label: "1 mês", icon: TrendingUp },
+  { value: "total", label: "Tudo", icon: Sigma },
+  { value: "custom", label: "Personalizado", icon: SlidersHorizontal },
+];
+
+const fmt = (value: number | null) =>
+  value === null ? "—" : value.toLocaleString("pt-BR");
+
+function PeriodBar({
+  period,
+  onChange,
+  from,
+  to,
+  onFrom,
+  onTo,
+}: {
+  period: Period;
+  onChange: (period: Period) => void;
+  from: string;
+  to: string;
+  onFrom: (value: string) => void;
+  onTo: (value: string) => void;
+}) {
+  return (
+    <div className="panel-card mb-3 p-2.5 sm:p-3">
+      <div className="no-scrollbar flex items-center gap-1.5 overflow-x-auto">
+        {PERIODS.map(({ value, label, icon: Icon }) => (
+          <button
+            key={value}
+            onClick={() => onChange(value)}
+            className={`panel-chip text-xs sm:text-sm ${
+              period === value ? "panel-chip-active" : "text-muted-foreground"
+            }`}
+          >
+            <Icon className="size-3.5" aria-hidden /> {label}
+          </button>
+        ))}
+      </div>
+      {period === "custom" ? (
+        <div className="mt-2.5 grid grid-cols-2 gap-2 border-t border-border/50 pt-2.5">
+          <label className="block text-xs text-muted-foreground">
+            De
+            <input
+              type="date"
+              value={from}
+              onChange={(event) => onFrom(event.target.value)}
+              className="mt-1 w-full rounded-xl border border-input bg-secondary/50 px-3 py-2 text-sm text-foreground outline-none focus:border-primary"
+            />
+          </label>
+          <label className="block text-xs text-muted-foreground">
+            Até
+            <input
+              type="date"
+              value={to}
+              onChange={(event) => onTo(event.target.value)}
+              className="mt-1 w-full rounded-xl border border-input bg-secondary/50 px-3 py-2 text-sm text-foreground outline-none focus:border-primary"
+            />
+          </label>
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+
 function PanelPage() {
   const navigate = useNavigate();
   const [checking, setChecking] = useState(true);
