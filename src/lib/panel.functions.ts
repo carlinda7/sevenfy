@@ -28,6 +28,7 @@ export const callBotApi = createServerFn({ method: "POST" })
   })
   .handler(async ({ data }) => {
     const url = `${normalize(data.base)}${data.path}`;
+    const isPost = data.method === "POST";
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), 12_000);
     try {
@@ -37,17 +38,17 @@ export const callBotApi = createServerFn({ method: "POST" })
           Authorization: `Bearer ${data.token}`,
           "Content-Type": "application/json",
         },
-        body: data.method === "POST" ? JSON.stringify(data.body ?? {}) : undefined,
+        ...(isPost ? { body: JSON.stringify(data.body ?? {}) } : {}),
         signal: controller.signal,
       });
       const text = await response.text();
-      let parsed: unknown = null;
+      let parsed: Record<string, unknown> = {};
       try {
-        parsed = JSON.parse(text);
+        parsed = JSON.parse(text) as Record<string, unknown>;
       } catch {
         parsed = { ok: false, error: text.slice(0, 200) };
       }
-      return { status: response.status, ok: response.ok, payload: parsed };
+      return { status: response.status, ok: response.ok, payload: parsed as Record<string, unknown> };
     } catch (error) {
       return {
         status: 0,

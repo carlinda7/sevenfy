@@ -8,8 +8,8 @@ export function StatCard({
 }: {
   label: string;
   value: ReactNode;
-  hint?: string;
-  accent?: boolean;
+  hint?: string | undefined;
+  accent?: boolean | undefined;
 }) {
   return (
     <div className="panel-card p-4">

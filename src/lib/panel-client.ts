@@ -39,7 +39,7 @@ export async function api<T>(
       body: init?.body,
     },
   });
-  const payload = result.payload as { ok?: boolean; error?: string } & T;
+  const payload = result.payload as unknown as { ok?: boolean; error?: string } & T;
   if (!result.ok || payload?.ok === false) {
     throw new Error(
       payload?.error === "unauthorized"
