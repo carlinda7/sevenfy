@@ -20,6 +20,8 @@ import {
   ShieldCheck,
   ShoppingCart,
   Sigma,
+  SlidersHorizontal,
+
   Sparkles,
   TrendingUp,
   Users,
@@ -101,6 +103,76 @@ function kindMeta(kind: string) {
   return KIND_META[kind] ?? { label: kind, icon: Activity };
 }
 
+type Period = "hoje" | "7d" | "30d" | "total" | "custom";
+
+const PERIODS: { value: Period; label: string; icon: typeof CalendarDays }[] = [
+  { value: "hoje", label: "Hoje", icon: CalendarDays },
+  { value: "7d", label: "7 dias", icon: CalendarRange },
+  { value: "30d", label: "1 mês", icon: TrendingUp },
+  { value: "total", label: "Tudo", icon: Sigma },
+  { value: "custom", label: "Personalizado", icon: SlidersHorizontal },
+];
+
+const fmt = (value: number | null) =>
+  value === null ? "—" : value.toLocaleString("pt-BR");
+
+function PeriodBar({
+  period,
+  onChange,
+  from,
+  to,
+  onFrom,
+  onTo,
+}: {
+  period: Period;
+  onChange: (period: Period) => void;
+  from: string;
+  to: string;
+  onFrom: (value: string) => void;
+  onTo: (value: string) => void;
+}) {
+  return (
+    <div className="panel-card mb-3 p-2.5 sm:p-3">
+      <div className="no-scrollbar flex items-center gap-1.5 overflow-x-auto">
+        {PERIODS.map(({ value, label, icon: Icon }) => (
+          <button
+            key={value}
+            onClick={() => onChange(value)}
+            className={`panel-chip text-xs sm:text-sm ${
+              period === value ? "panel-chip-active" : "text-muted-foreground"
+            }`}
+          >
+            <Icon className="size-3.5" aria-hidden /> {label}
+          </button>
+        ))}
+      </div>
+      {period === "custom" ? (
+        <div className="mt-2.5 grid grid-cols-2 gap-2 border-t border-border/50 pt-2.5">
+          <label className="block text-xs text-muted-foreground">
+            De
+            <input
+              type="date"
+              value={from}
+              onChange={(event) => onFrom(event.target.value)}
+              className="mt-1 w-full rounded-xl border border-input bg-secondary/50 px-3 py-2 text-sm text-foreground outline-none focus:border-primary"
+            />
+          </label>
+          <label className="block text-xs text-muted-foreground">
+            Até
+            <input
+              type="date"
+              value={to}
+              onChange={(event) => onTo(event.target.value)}
+              className="mt-1 w-full rounded-xl border border-input bg-secondary/50 px-3 py-2 text-sm text-foreground outline-none focus:border-primary"
+            />
+          </label>
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+
 function PanelPage() {
   const navigate = useNavigate();
   const [checking, setChecking] = useState(true);
@@ -179,6 +251,10 @@ function DashboardPage({
   const [confirm, setConfirm] = useState<null | "token" | "signout">(null);
   const [detail, setDetail] = useState<NotificationRow | null>(null);
   const [connectOpen, setConnectOpen] = useState(false);
+  const [period, setPeriod] = useState<Period>("hoje");
+  const [customFrom, setCustomFrom] = useState("");
+  const [customTo, setCustomTo] = useState("");
+
 
   const connected = Boolean(config?.token || serverReady);
   const activeConfig: PanelConfig = config ?? {};
@@ -225,6 +301,54 @@ function DashboardPage({
 
   const data = dashboard.data;
   const starts = data?.starts;
+
+  const periodLabel = PERIODS.find((item) => item.value === period)?.label ?? "Hoje";
+  const unavailableHint = "Sem dados para período personalizado";
+
+  const startsValue = (() => {
+    if (!starts) return null;
+    if (period === "hoje") return starts.hoje;
+    if (period === "7d") return starts.d7;
+    if (period === "30d") return starts.d30;
+    if (period === "total") return starts.total;
+    if (!customFrom || !customTo) return null;
+    return starts.serie
+      .filter((item) => item.dia >= customFrom && item.dia <= customTo)
+      .reduce((sum, item) => sum + item.total, 0);
+  })();
+
+  const startsHint = (() => {
+    if (!starts) return undefined;
+    if (period === "hoje")
+      return `${starts.hoje_unicos} únicos · ${starts.hoje_novos} novos`;
+    if (period === "7d") return `${starts.d7_unicos} únicos`;
+    if (period === "30d") return `${starts.d30_unicos} únicos`;
+    if (period === "total") return `${starts.total_unicos} pessoas`;
+    return customFrom && customTo ? `${customFrom} a ${customTo}` : "Escolha as datas";
+  })();
+
+  const bucket = <T extends { total: number; hoje: number; d7?: number; d30?: number }>(
+    source: T | undefined,
+  ): number | null => {
+    if (!source) return null;
+    if (period === "hoje") return source.hoje;
+    if (period === "7d") return source.d7 ?? null;
+    if (period === "30d") return source.d30 ?? null;
+    if (period === "total") return source.total;
+    return null;
+  };
+
+  const faturamento = bucket(data?.faturamento);
+  const pedidos = bucket(data?.pedidos);
+  const usuarios = bucket(data?.usuarios);
+  const recargas = data
+    ? period === "hoje"
+      ? data.recargas.pagas_hoje
+      : period === "total"
+        ? data.recargas.pagas_total
+        : null
+    : null;
+
 
   const statusLabel = !connected
     ? "Bot não conectado"
@@ -348,66 +472,66 @@ function DashboardPage({
         </div>
       ) : null}
 
-      <div className="mb-3 grid grid-cols-2 gap-2.5 sm:gap-3 md:grid-cols-4">
+      <PeriodBar
+        period={period}
+        onChange={setPeriod}
+        from={customFrom}
+        to={customTo}
+        onFrom={setCustomFrom}
+        onTo={setCustomTo}
+      />
+
+      <div className="mb-5 grid grid-cols-2 gap-2.5 sm:gap-3 lg:grid-cols-3">
         <StatCard
-          label="Starts hoje"
+          label={`Starts · ${periodLabel}`}
           icon={<Rocket className="size-4" aria-hidden />}
-          value={starts?.hoje ?? "—"}
-          hint={starts ? `${starts.hoje_unicos} únicos · ${starts.hoje_novos} novos` : undefined}
+          value={fmt(startsValue)}
+          hint={startsHint}
           accent
         />
         <StatCard
-          label="Starts 7 dias"
-          icon={<CalendarDays className="size-4" aria-hidden />}
-          tone="neutral"
-          value={starts?.d7 ?? "—"}
-          hint={starts ? `${starts.d7_unicos} únicos` : undefined}
+          label={`Faturamento · ${periodLabel}`}
+          icon={<CircleDollarSign className="size-4" aria-hidden />}
+          tone="accent"
+          value={faturamento === null ? "—" : money(faturamento)}
+          hint={faturamento === null ? unavailableHint : `Total ${money(data?.faturamento.total ?? 0)}`}
+          accent
         />
         <StatCard
-          label="Starts 30 dias"
-          icon={<CalendarRange className="size-4" aria-hidden />}
+          label={`Pedidos · ${periodLabel}`}
+          icon={<ShoppingCart className="size-4" aria-hidden />}
           tone="neutral"
-          value={starts?.d30 ?? "—"}
-          hint={starts ? `${starts.d30_unicos} únicos` : undefined}
+          value={fmt(pedidos)}
+          hint={pedidos === null ? unavailableHint : `Total ${data?.pedidos.total ?? 0}`}
         />
         <StatCard
-          label="Starts total"
+          label={`Recargas pagas · ${periodLabel}`}
+          icon={<Wallet className="size-4" aria-hidden />}
+          tone="warning"
+          value={recargas === null ? "—" : money(recargas)}
+          hint={
+            recargas === null ? unavailableHint : `${data?.recargas.pendentes ?? 0} pendentes`
+          }
+        />
+        <StatCard
+          label={`Usuários · ${periodLabel}`}
+          icon={<Users className="size-4" aria-hidden />}
+          value={fmt(usuarios)}
+          hint={
+            usuarios === null
+              ? unavailableHint
+              : `Total ${data?.usuarios.total ?? 0} · ${data?.usuarios.banidos ?? 0} banidos`
+          }
+        />
+        <StatCard
+          label="Saldo em carteira"
           icon={<Sigma className="size-4" aria-hidden />}
           tone="neutral"
-          value={starts?.total ?? "—"}
-          hint={starts ? `${starts.total_unicos} pessoas` : undefined}
+          value={money(data?.usuarios.saldo_total ?? 0)}
+          hint={`${data?.produtos.ativos ?? 0} produtos ativos`}
         />
       </div>
 
-      <div className="mb-5 grid grid-cols-2 gap-2.5 sm:gap-3 md:grid-cols-4">
-        <StatCard
-          label="Faturamento hoje"
-          icon={<CircleDollarSign className="size-4" aria-hidden />}
-          tone="accent"
-          value={money(data?.faturamento.hoje ?? 0)}
-          accent
-        />
-        <StatCard
-          label="Faturamento 30d"
-          icon={<TrendingUp className="size-4" aria-hidden />}
-          tone="accent"
-          value={money(data?.faturamento.d30 ?? 0)}
-          hint={`Total ${money(data?.faturamento.total ?? 0)}`}
-        />
-        <StatCard
-          label="Recargas pagas hoje"
-          icon={<Wallet className="size-4" aria-hidden />}
-          tone="warning"
-          value={money(data?.recargas.pagas_hoje ?? 0)}
-          hint={`${data?.recargas.pendentes ?? 0} pendentes`}
-        />
-        <StatCard
-          label="Usuários"
-          icon={<Users className="size-4" aria-hidden />}
-          value={data?.usuarios.total ?? "—"}
-          hint={`${data?.usuarios.hoje ?? 0} hoje · ${data?.usuarios.banidos ?? 0} banidos`}
-        />
-      </div>
 
       <div className="mb-4 grid gap-3 sm:gap-4 lg:grid-cols-3">
         <div className="lg:col-span-2">
