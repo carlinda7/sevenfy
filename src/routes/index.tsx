@@ -386,20 +386,23 @@ function Dashboard({
       </div>
 
 
-      <div className="mb-6 grid gap-4 lg:grid-cols-3">
+      <div className="mb-4 grid gap-3 sm:gap-4 lg:grid-cols-3">
         <div className="lg:col-span-2">
           <Section title="Starts por dia (14 dias)">
             <StartsChart serie={starts?.serie ?? []} />
           </Section>
         </div>
         <Section title="Últimos /start">
-          <ul className="space-y-2 text-sm">
+          <ul className="space-y-1.5 text-sm">
             {recent.slice(0, 8).map((event) => (
-              <li key={event.id} className="flex items-center justify-between gap-2">
-                <span className="truncate">
+              <li
+                key={event.id}
+                className="flex items-center justify-between gap-2 rounded-xl bg-secondary/35 px-3 py-2"
+              >
+                <span className="min-w-0 truncate font-medium">
                   {event.username ? `@${event.username}` : event.first_name || event.telegram_id}
                 </span>
-                <span className="shrink-0 text-xs text-muted-foreground">
+                <span className="shrink-0 text-xs tabular-nums text-muted-foreground">
                   {event.is_new ? "🆕" : "🔁"} {event.created_at.slice(11, 16)}
                 </span>
               </li>
@@ -411,11 +414,11 @@ function Dashboard({
         </Section>
       </div>
 
-      <div className="mb-6">
+      <div className="mb-4">
         <Section
           title="Mensagens enviadas aos canais"
           action={
-            <div className="flex flex-wrap gap-1.5 text-xs">
+            <div className="no-scrollbar flex max-w-[55vw] gap-1.5 overflow-x-auto sm:max-w-none">
               {(
                 [
                   ["", "Tudo"],
@@ -427,11 +430,7 @@ function Dashboard({
                 <button
                   key={value}
                   onClick={() => setKindFilter(value)}
-                  className={`rounded-lg border px-2.5 py-1.5 ${
-                    kindFilter === value
-                      ? "border-primary text-primary"
-                      : "border-border text-muted-foreground"
-                  }`}
+                  className={`panel-chip text-xs ${kindFilter === value ? "panel-chip-active" : "text-muted-foreground"}`}
                 >
                   {label}
                 </button>
@@ -439,18 +438,21 @@ function Dashboard({
             </div>
           }
         >
-          <ul className="space-y-3">
+          <ul className="space-y-2.5">
             {(notifications.data ?? []).map((item) => (
-              <li key={item.id} className="rounded-lg border border-border bg-secondary/40 p-3">
+              <li
+                key={item.id}
+                className="rounded-2xl border border-border/60 bg-secondary/35 p-3 transition-colors hover:border-primary/40"
+              >
                 <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-muted-foreground">
-                  <span className="font-medium text-foreground">
+                  <span className="panel-chip py-1 text-xs font-semibold text-foreground">
                     {KIND_LABEL[item.kind] ?? item.kind}
                   </span>
-                  <span>
+                  <span className="tabular-nums">
                     {item.created_at.slice(0, 10)} às {item.created_at.slice(11, 16)}
                   </span>
                 </div>
-                <pre className="mt-2 whitespace-pre-wrap break-words font-sans text-sm text-foreground">
+                <pre className="mt-2.5 whitespace-pre-wrap break-words font-sans text-sm leading-relaxed text-foreground">
                   {item.public_text || item.admin_text}
                 </pre>
                 {item.channels ? (
@@ -460,6 +462,7 @@ function Dashboard({
                 )}
               </li>
             ))}
+
             {(notifications.data ?? []).length === 0 ? (
               <li className="text-sm text-muted-foreground">
                 Nenhuma mensagem registrada ainda. Vendas, recargas e gifts aparecem aqui com data,
