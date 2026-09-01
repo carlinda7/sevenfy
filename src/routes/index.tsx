@@ -158,11 +158,17 @@ function TokenScreen({
   };
 
   return (
-    <main className="flex min-h-screen items-center justify-center px-4 py-12">
-      <div className="panel-card w-full max-w-md p-7">
-        <img src="/icon-192.png" alt="Aura Panel" width={56} height={56} className="rounded-2xl" />
-        <h1 className="mt-5 font-display text-2xl font-bold">Conectar ao bot</h1>
-        <p className="mt-2 text-sm text-muted-foreground">
+    <main className="flex min-h-screen items-center justify-center px-4 py-10">
+      <div className="panel-card w-full max-w-md p-6 sm:p-8">
+        <img
+          src="/icon-192.png"
+          alt="Aura Panel"
+          width={56}
+          height={56}
+          className="size-14 rounded-2xl ring-1 ring-border"
+        />
+        <h1 className="mt-5 font-display text-2xl font-bold sm:text-3xl">Conectar ao bot</h1>
+        <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
           No Telegram, abra <strong className="text-foreground">Painel Admin → 🌐 Painel Web</strong>{" "}
           e cole o token abaixo. Ele fica salvo na sua conta.
         </p>
@@ -175,7 +181,7 @@ function TokenScreen({
                 onChange={(event) => setBase(event.target.value)}
                 placeholder="http://123.45.67.89:8090"
                 required
-                className="mt-1 w-full rounded-lg border border-input bg-secondary/60 px-3 py-2 text-foreground outline-none focus:border-primary"
+                className="mt-1.5 w-full rounded-xl border border-input bg-secondary/60 px-3.5 py-3 text-base text-foreground outline-none transition-colors focus:border-primary sm:text-sm"
               />
             </label>
           ) : null}
@@ -186,18 +192,19 @@ function TokenScreen({
               onChange={(event) => setToken(event.target.value)}
               type="password"
               required
-              className="mt-1 w-full rounded-lg border border-input bg-secondary/60 px-3 py-2 text-foreground outline-none focus:border-primary"
+              className="mt-1.5 w-full rounded-xl border border-input bg-secondary/60 px-3.5 py-3 text-base text-foreground outline-none transition-colors focus:border-primary sm:text-sm"
             />
           </label>
           {error ? <p className="text-sm text-destructive">{error}</p> : null}
           <button
             type="submit"
             disabled={loading}
-            className="w-full rounded-lg bg-primary px-4 py-2.5 font-medium text-primary-foreground transition-opacity hover:opacity-90 disabled:opacity-60"
+            className="panel-gradient-btn w-full rounded-xl px-4 py-3 font-semibold transition-opacity hover:opacity-90 disabled:opacity-60"
           >
             {loading ? "Conectando..." : "Conectar"}
           </button>
         </form>
+
         <button onClick={onSignOut} className="mt-4 w-full text-sm text-muted-foreground underline">
           Sair da conta
         </button>
