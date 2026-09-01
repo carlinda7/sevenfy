@@ -179,6 +179,10 @@ function DashboardPage({
   const [confirm, setConfirm] = useState<null | "token" | "signout">(null);
   const [detail, setDetail] = useState<NotificationRow | null>(null);
   const [connectOpen, setConnectOpen] = useState(false);
+  const [period, setPeriod] = useState<Period>("hoje");
+  const [customFrom, setCustomFrom] = useState("");
+  const [customTo, setCustomTo] = useState("");
+
 
   const connected = Boolean(config?.token || serverReady);
   const activeConfig: PanelConfig = config ?? {};
