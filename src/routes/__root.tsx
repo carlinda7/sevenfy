@@ -128,8 +128,40 @@ function RootComponent() {
 
   useEffect(() => {
     if (!("serviceWorker" in navigator)) return;
+
+    const host = window.location.hostname;
+    const blocked =
+      !import.meta.env.PROD ||
+      window.self !== window.top ||
+      host.startsWith("id-preview--") ||
+      host.startsWith("preview--") ||
+      host === "lovableproject.com" ||
+      host.endsWith(".lovableproject.com") ||
+      host === "lovableproject-dev.com" ||
+      host.endsWith(".lovableproject-dev.com") ||
+      host === "beta.lovable.dev" ||
+      host.endsWith(".beta.lovable.dev") ||
+      new URL(window.location.href).searchParams.has("sw=off");
+
+    if (blocked) {
+      void navigator.serviceWorker
+        .getRegistrations()
+        .then((registrations) =>
+          Promise.all(
+            registrations
+              .filter((registration) =>
+                (registration.active?.scriptURL ?? "").includes("/sw.js"),
+              )
+              .map((registration) => registration.unregister()),
+          ),
+        )
+        .catch(() => undefined);
+      return;
+    }
+
     navigator.serviceWorker.register("/sw.js").catch(() => undefined);
   }, []);
+
 
   return (
     <QueryClientProvider client={queryClient}>
