@@ -8,7 +8,10 @@ export async function fetchConnection(): Promise<PanelConfig | null> {
     .maybeSingle();
   if (error || !data) return null;
   if (!data.token && !data.base) return null;
-  return { base: data.base || undefined, token: data.token || undefined };
+  const config: PanelConfig = {};
+  if (data.base) config.base = data.base;
+  if (data.token) config.token = data.token;
+  return config;
 }
 
 export async function saveConnection(config: PanelConfig) {
