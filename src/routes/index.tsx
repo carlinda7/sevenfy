@@ -226,6 +226,54 @@ function DashboardPage({
   const data = dashboard.data;
   const starts = data?.starts;
 
+  const periodLabel = PERIODS.find((item) => item.value === period)?.label ?? "Hoje";
+  const unavailableHint = "Sem dados para período personalizado";
+
+  const startsValue = (() => {
+    if (!starts) return null;
+    if (period === "hoje") return starts.hoje;
+    if (period === "7d") return starts.d7;
+    if (period === "30d") return starts.d30;
+    if (period === "total") return starts.total;
+    if (!customFrom || !customTo) return null;
+    return starts.serie
+      .filter((item) => item.dia >= customFrom && item.dia <= customTo)
+      .reduce((sum, item) => sum + item.total, 0);
+  })();
+
+  const startsHint = (() => {
+    if (!starts) return undefined;
+    if (period === "hoje")
+      return `${starts.hoje_unicos} únicos · ${starts.hoje_novos} novos`;
+    if (period === "7d") return `${starts.d7_unicos} únicos`;
+    if (period === "30d") return `${starts.d30_unicos} únicos`;
+    if (period === "total") return `${starts.total_unicos} pessoas`;
+    return customFrom && customTo ? `${customFrom} a ${customTo}` : "Escolha as datas";
+  })();
+
+  const bucket = <T extends { total: number; hoje: number; d7?: number; d30?: number }>(
+    source: T | undefined,
+  ): number | null => {
+    if (!source) return null;
+    if (period === "hoje") return source.hoje;
+    if (period === "7d") return source.d7 ?? null;
+    if (period === "30d") return source.d30 ?? null;
+    if (period === "total") return source.total;
+    return null;
+  };
+
+  const faturamento = bucket(data?.faturamento);
+  const pedidos = bucket(data?.pedidos);
+  const usuarios = bucket(data?.usuarios);
+  const recargas = data
+    ? period === "hoje"
+      ? data.recargas.pagas_hoje
+      : period === "total"
+        ? data.recargas.pagas_total
+        : null
+    : null;
+
+
   const statusLabel = !connected
     ? "Bot não conectado"
     : dashboard.isError
