@@ -10,6 +10,7 @@ import {
   type Dashboard,
   type PanelConfig,
 } from "@/lib/panel-client";
+import { getPanelDefaults } from "@/lib/panel.functions";
 import { useStartNotifications } from "@/lib/use-start-notifications";
 import { Section, StartsChart, StatCard, Table } from "@/components/panel/parts";
 
@@ -56,25 +57,39 @@ function PanelPage() {
   const [config, setConfig] = useState<PanelConfig | null>(null);
   const [ready, setReady] = useState(false);
 
+  const defaults = useQuery({
+    queryKey: ["panel-defaults"],
+    queryFn: () => getPanelDefaults(),
+    staleTime: Infinity,
+  });
+
   useEffect(() => {
     setConfig(loadConfig());
     setReady(true);
   }, []);
 
-  if (!ready) {
+  if (!ready || defaults.isLoading) {
     return <div className="min-h-screen bg-background" />;
   }
 
-  return config ? (
+  const serverReady = Boolean(defaults.data?.hasBase && defaults.data?.hasToken);
+  const active = config ?? (serverReady ? {} : null);
+
+  return active ? (
     <Dashboard
-      config={config}
-      onDisconnect={() => {
-        clearConfig();
-        setConfig(null);
-      }}
+      config={active}
+      onDisconnect={
+        serverReady && !config
+          ? undefined
+          : () => {
+              clearConfig();
+              setConfig(null);
+            }
+      }
     />
   ) : (
     <ConnectScreen
+      needsBase={!defaults.data?.hasBase}
       onConnected={(next) => {
         saveConfig(next);
         setConfig(next);
@@ -83,7 +98,13 @@ function PanelPage() {
   );
 }
 
-function ConnectScreen({ onConnected }: { onConnected: (config: PanelConfig) => void }) {
+function ConnectScreen({
+  needsBase,
+  onConnected,
+}: {
+  needsBase: boolean;
+  onConnected: (config: PanelConfig) => void;
+}) {
   const [base, setBase] = useState("");
   const [token, setToken] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -93,7 +114,8 @@ function ConnectScreen({ onConnected }: { onConnected: (config: PanelConfig) => 
     event.preventDefault();
     setLoading(true);
     setError(null);
-    const candidate = { base: base.trim(), token: token.trim() };
+    const candidate: PanelConfig = { token: token.trim() };
+    if (needsBase && base.trim()) candidate.base = base.trim();
     try {
       await api<{ data: unknown }>(candidate, "/api/dashboard");
       onConnected(candidate);
@@ -110,20 +132,22 @@ function ConnectScreen({ onConnected }: { onConnected: (config: PanelConfig) => 
         <img src="/icon-192.png" alt="Aura Panel" width={56} height={56} className="rounded-2xl" />
         <h1 className="mt-5 font-display text-2xl font-bold">Conectar ao bot</h1>
         <p className="mt-2 text-sm text-muted-foreground">
-          No Telegram, abra <strong className="text-foreground">Painel Admin → 🌐 Painel Web</strong> e
-          copie a URL da API e o token.
+          No Telegram, abra <strong className="text-foreground">Painel Admin → 🌐 Painel Web</strong>{" "}
+          e copie o token de acesso.
         </p>
         <form onSubmit={connect} className="mt-6 space-y-4">
-          <label className="block text-sm">
-            <span className="text-muted-foreground">URL da API</span>
-            <input
-              value={base}
-              onChange={(event) => setBase(event.target.value)}
-              placeholder="http://123.45.67.89:8082"
-              required
-              className="mt-1 w-full rounded-lg border border-input bg-secondary/60 px-3 py-2 text-foreground outline-none focus:border-primary"
-            />
-          </label>
+          {needsBase ? (
+            <label className="block text-sm">
+              <span className="text-muted-foreground">URL da API</span>
+              <input
+                value={base}
+                onChange={(event) => setBase(event.target.value)}
+                placeholder="http://123.45.67.89:8090"
+                required
+                className="mt-1 w-full rounded-lg border border-input bg-secondary/60 px-3 py-2 text-foreground outline-none focus:border-primary"
+              />
+            </label>
+          ) : null}
           <label className="block text-sm">
             <span className="text-muted-foreground">Token</span>
             <input
@@ -148,30 +172,31 @@ function ConnectScreen({ onConnected }: { onConnected: (config: PanelConfig) => 
   );
 }
 
+
 function Dashboard({
   config,
   onDisconnect,
 }: {
   config: PanelConfig;
-  onDisconnect: () => void;
+  onDisconnect?: (() => void) | undefined;
 }) {
   const [notifyOn, setNotifyOn] = useState(true);
   const { permission, requestPermission, recent } = useStartNotifications(config, notifyOn);
 
   const dashboard = useQuery({
-    queryKey: ["dashboard", config.base],
+    queryKey: ["dashboard", config.base ?? "server"],
     queryFn: () => api<{ data: Dashboard }>(config, "/api/dashboard").then((r) => r.data),
     refetchInterval: 30_000,
   });
 
   const users = useQuery({
-    queryKey: ["users", config.base],
+    queryKey: ["users", config.base ?? "server"],
     queryFn: () => api<{ data: UserRow[] }>(config, "/api/users?limit=15").then((r) => r.data),
     refetchInterval: 60_000,
   });
 
   const orders = useQuery({
-    queryKey: ["orders", config.base],
+    queryKey: ["orders", config.base ?? "server"],
     queryFn: () => api<{ data: OrderRow[] }>(config, "/api/orders?limit=15").then((r) => r.data),
     refetchInterval: 60_000,
   });
@@ -217,9 +242,11 @@ function Dashboard({
           >
             🔄 Atualizar
           </button>
-          <button onClick={onDisconnect} className="rounded-lg border border-border px-3 py-2">
-            Sair
-          </button>
+          {onDisconnect ? (
+            <button onClick={onDisconnect} className="rounded-lg border border-border px-3 py-2">
+              Sair
+            </button>
+          ) : null}
         </div>
       </header>
 

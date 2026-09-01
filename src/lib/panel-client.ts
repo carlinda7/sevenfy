@@ -1,6 +1,6 @@
 import { callBotApi } from "./panel.functions";
 
-export type PanelConfig = { base: string; token: string };
+export type PanelConfig = { base?: string; token?: string };
 
 const STORAGE_KEY = "botaura.panel.config";
 
@@ -10,7 +10,7 @@ export function loadConfig(): PanelConfig | null {
     const raw = window.localStorage.getItem(STORAGE_KEY);
     if (!raw) return null;
     const parsed = JSON.parse(raw) as PanelConfig;
-    if (!parsed?.base || !parsed?.token) return null;
+    if (!parsed?.base && !parsed?.token) return null;
     return parsed;
   } catch {
     return null;
@@ -49,6 +49,7 @@ export async function api<T>(
   }
   return payload;
 }
+
 
 export type StartMetrics = {
   total: number;
