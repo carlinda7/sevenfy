@@ -341,13 +341,24 @@ function Dashboard({
         </div>
 
         <div className="no-scrollbar -mx-3 mt-3 flex gap-2 overflow-x-auto px-3 sm:mx-0 sm:mt-4 sm:px-0">
-          <button onClick={() => dashboard.refetch()} className="panel-chip">
+          <button
+            onClick={() => {
+              void Promise.all([
+                dashboard.refetch(),
+                users.refetch(),
+                orders.refetch(),
+                notifications.refetch(),
+              ]);
+              toast.success("Atualizando dados do bot");
+            }}
+            className="panel-chip"
+          >
             🔄 Atualizar
           </button>
-          <button onClick={() => void onDisconnect()} className="panel-chip">
+          <button onClick={() => setConfirm("token")} className="panel-chip">
             🔑 Trocar token
           </button>
-          <button onClick={onSignOut} className="panel-chip">
+          <button onClick={() => setConfirm("signout")} className="panel-chip">
             ↩︎ Sair
           </button>
         </div>
