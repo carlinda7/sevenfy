@@ -144,3 +144,32 @@
     color: var(--color-foreground);
   }
 }
+
+@theme inline {
+  --font-sans: var(--font-body);
+  --font-display: var(--font-display);
+}
+
+@layer base {
+  body {
+    font-family: var(--font-body);
+    background-image:
+      radial-gradient(60rem 30rem at 15% -10%, oklch(0.82 0.15 195 / 12%), transparent 70%),
+      radial-gradient(50rem 28rem at 90% 0%, oklch(0.68 0.19 300 / 14%), transparent 70%);
+    background-attachment: fixed;
+  }
+
+  h1,
+  h2,
+  h3 {
+    font-family: var(--font-display);
+    letter-spacing: -0.02em;
+  }
+}
+
+@utility panel-card {
+  border-radius: var(--radius-xl);
+  border: 1px solid var(--color-border);
+  background: color-mix(in oklab, var(--color-card) 85%, transparent);
+  backdrop-filter: blur(8px);
+}
