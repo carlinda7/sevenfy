@@ -547,6 +547,74 @@ function Dashboard({
           />
         </Section>
       </div>
+
+      <ConfirmDialog
+        open={confirm === "token"}
+        onOpenChange={(open) => setConfirm(open ? "token" : null)}
+        icon="🔑"
+        title="Trocar o token do bot?"
+        description="O painel vai desconectar do bot e pedir um novo token. Suas métricas não são apagadas."
+        confirmLabel="Trocar token"
+        onConfirm={async () => {
+          setConfirm(null);
+          await onDisconnect();
+          toast.success("Token removido", { description: "Cole o novo token para reconectar." });
+        }}
+      />
+
+      <ConfirmDialog
+        open={confirm === "signout"}
+        onOpenChange={(open) => setConfirm(open ? "signout" : null)}
+        icon="↩︎"
+        title="Sair da sua conta?"
+        description="Você vai precisar entrar novamente com e-mail e senha para acessar o painel."
+        confirmLabel="Sair agora"
+        tone="destructive"
+        onConfirm={() => {
+          setConfirm(null);
+          onSignOut();
+        }}
+      />
+
+      <Dialog open={detail !== null} onOpenChange={(open) => !open && setDetail(null)}>
+        <DialogContent className="panel-card max-w-[calc(100vw-1.5rem)] gap-0 border-border/70 bg-card/95 p-0 sm:max-w-lg">
+          <div className="h-1 w-full rounded-t-[inherit] bg-linear-to-r from-primary to-accent" />
+          <div className="p-5 sm:p-6">
+            <DialogHeader className="text-left">
+              <DialogTitle className="font-display text-lg font-bold tracking-tight">
+                {detail ? (KIND_LABEL[detail.kind] ?? detail.kind) : ""}
+              </DialogTitle>
+              <DialogDescription className="text-xs text-muted-foreground">
+                {detail
+                  ? `${detail.created_at.slice(0, 10)} às ${detail.created_at.slice(11, 19)}`
+                  : ""}
+              </DialogDescription>
+            </DialogHeader>
+
+            <div className="mt-4 space-y-3">
+              <div className="rounded-xl border border-border/60 bg-secondary/40 p-3">
+                <p className="text-[0.7rem] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+                  Mensagem enviada aos canais
+                </p>
+                <pre className="mt-2 max-h-56 overflow-y-auto whitespace-pre-wrap break-words font-sans text-sm leading-relaxed">
+                  {detail?.public_text || "—"}
+                </pre>
+              </div>
+              <div className="rounded-xl border border-border/60 bg-secondary/25 p-3">
+                <p className="text-[0.7rem] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+                  Versão completa (PV dos admins)
+                </p>
+                <pre className="mt-2 max-h-56 overflow-y-auto whitespace-pre-wrap break-words font-sans text-sm leading-relaxed">
+                  {detail?.admin_text || "—"}
+                </pre>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                {detail?.channels ? `Canais: ${detail.channels}` : "Somente PV dos admins"}
+              </p>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </main>
   );
 }
