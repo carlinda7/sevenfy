@@ -10,6 +10,7 @@ import {
   type Dashboard,
   type PanelConfig,
 } from "@/lib/panel-client";
+import { getPanelDefaults } from "@/lib/panel.functions";
 import { useStartNotifications } from "@/lib/use-start-notifications";
 import { Section, StartsChart, StatCard, Table } from "@/components/panel/parts";
 
@@ -177,25 +178,25 @@ function Dashboard({
   onDisconnect,
 }: {
   config: PanelConfig;
-  onDisconnect: () => void;
+  onDisconnect?: (() => void) | undefined;
 }) {
   const [notifyOn, setNotifyOn] = useState(true);
   const { permission, requestPermission, recent } = useStartNotifications(config, notifyOn);
 
   const dashboard = useQuery({
-    queryKey: ["dashboard", config.base],
+    queryKey: ["dashboard", config.base ?? "server"],
     queryFn: () => api<{ data: Dashboard }>(config, "/api/dashboard").then((r) => r.data),
     refetchInterval: 30_000,
   });
 
   const users = useQuery({
-    queryKey: ["users", config.base],
+    queryKey: ["users", config.base ?? "server"],
     queryFn: () => api<{ data: UserRow[] }>(config, "/api/users?limit=15").then((r) => r.data),
     refetchInterval: 60_000,
   });
 
   const orders = useQuery({
-    queryKey: ["orders", config.base],
+    queryKey: ["orders", config.base ?? "server"],
     queryFn: () => api<{ data: OrderRow[] }>(config, "/api/orders?limit=15").then((r) => r.data),
     refetchInterval: 60_000,
   });
@@ -241,9 +242,11 @@ function Dashboard({
           >
             🔄 Atualizar
           </button>
-          <button onClick={onDisconnect} className="rounded-lg border border-border px-3 py-2">
-            Sair
-          </button>
+          {onDisconnect ? (
+            <button onClick={onDisconnect} className="rounded-lg border border-border px-3 py-2">
+              Sair
+            </button>
+          ) : null}
         </div>
       </header>
 
