@@ -487,26 +487,27 @@ function Dashboard({
         >
           <ul className="space-y-2.5">
             {(notifications.data ?? []).map((item) => (
-              <li
-                key={item.id}
-                className="rounded-2xl border border-border/60 bg-secondary/35 p-3 transition-colors hover:border-primary/40"
-              >
-                <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-muted-foreground">
-                  <span className="panel-chip py-1 text-xs font-semibold text-foreground">
-                    {KIND_LABEL[item.kind] ?? item.kind}
-                  </span>
-                  <span className="tabular-nums">
-                    {item.created_at.slice(0, 10)} às {item.created_at.slice(11, 16)}
-                  </span>
-                </div>
-                <pre className="mt-2.5 whitespace-pre-wrap break-words font-sans text-sm leading-relaxed text-foreground">
-                  {item.public_text || item.admin_text}
-                </pre>
-                {item.channels ? (
-                  <p className="mt-2 text-xs text-muted-foreground">Canais: {item.channels}</p>
-                ) : (
-                  <p className="mt-2 text-xs text-muted-foreground">Somente PV dos admins</p>
-                )}
+              <li key={item.id}>
+                <button
+                  onClick={() => setDetail(item)}
+                  className="w-full rounded-2xl border border-border/60 bg-secondary/35 p-3 text-left transition-all hover:border-primary/50 hover:bg-secondary/55"
+                >
+                  <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-muted-foreground">
+                    <span className="panel-chip py-1 text-xs font-semibold text-foreground">
+                      {KIND_LABEL[item.kind] ?? item.kind}
+                    </span>
+                    <span className="tabular-nums">
+                      {item.created_at.slice(0, 10)} às {item.created_at.slice(11, 16)}
+                    </span>
+                  </div>
+                  <pre className="mt-2.5 line-clamp-4 whitespace-pre-wrap break-words font-sans text-sm leading-relaxed text-foreground">
+                    {item.public_text || item.admin_text}
+                  </pre>
+                  <p className="mt-2 text-xs text-muted-foreground">
+                    {item.channels ? `Canais: ${item.channels}` : "Somente PV dos admins"} · ver
+                    detalhes
+                  </p>
+                </button>
               </li>
             ))}
 
