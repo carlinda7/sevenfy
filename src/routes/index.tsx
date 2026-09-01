@@ -1,15 +1,9 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
-import {
-  api,
-  clearConfig,
-  loadConfig,
-  money,
-  saveConfig,
-  type Dashboard,
-  type PanelConfig,
-} from "@/lib/panel-client";
+import { supabase } from "@/integrations/supabase/client";
+import { api, money, type Dashboard, type PanelConfig } from "@/lib/panel-client";
+import { deleteConnection, fetchConnection, saveConnection } from "@/lib/panel-store";
 import { getPanelDefaults } from "@/lib/panel.functions";
 import { useStartNotifications } from "@/lib/use-start-notifications";
 import { Section, StartsChart, StatCard, Table } from "@/components/panel/parts";
@@ -21,14 +15,16 @@ export const Route = createFileRoute("/")({
       {
         name: "description",
         content:
-          "Painel web PWA do bot Telegram: métricas de /start (hoje, 7d, 30d), vendas, recargas, usuários e notificações em tempo real.",
+          "Painel web PWA do bot Telegram: métricas de /start (hoje, 7d, 30d), vendas, recargas, gifts, usuários e notificações em tempo real.",
       },
       { property: "og:title", content: "Aura Panel — Painel do bot Telegram" },
       {
         property: "og:description",
         content:
-          "Acompanhe starts, vendas, recargas e usuários do seu bot Telegram, com notificações PWA.",
+          "Acompanhe starts, vendas, recargas, gifts e usuários do seu bot Telegram, com notificações PWA.",
       },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary" },
     ],
   }),
   component: PanelPage,
@@ -53,9 +49,26 @@ type OrderRow = {
   created_at: string;
 };
 
+type NotificationRow = {
+  id: number;
+  kind: "sales" | "recharge" | "gift" | string;
+  admin_text: string;
+  public_text: string;
+  channels: string;
+  created_at: string;
+};
+
+const KIND_LABEL: Record<string, string> = {
+  sales: "🛒 Venda",
+  recharge: "💰 Recarga",
+  gift: "🎁 Gift",
+};
+
 function PanelPage() {
+  const navigate = useNavigate();
+  const [checking, setChecking] = useState(true);
+  const [signedIn, setSignedIn] = useState(false);
   const [config, setConfig] = useState<PanelConfig | null>(null);
-  const [ready, setReady] = useState(false);
 
   const defaults = useQuery({
     queryKey: ["panel-defaults"],
@@ -64,46 +77,63 @@ function PanelPage() {
   });
 
   useEffect(() => {
-    setConfig(loadConfig());
-    setReady(true);
-  }, []);
+    let active = true;
+    void (async () => {
+      const { data } = await supabase.auth.getSession();
+      if (!active) return;
+      if (!data.session) {
+        setSignedIn(false);
+        setChecking(false);
+        void navigate({ to: "/auth" });
+        return;
+      }
+      setSignedIn(true);
+      setConfig(await fetchConnection());
+      setChecking(false);
+    })();
+    return () => {
+      active = false;
+    };
+  }, [navigate]);
 
-  if (!ready || defaults.isLoading) {
+  if (checking || defaults.isLoading || !signedIn) {
     return <div className="min-h-screen bg-background" />;
   }
 
-  const serverReady = Boolean(defaults.data?.hasBase && defaults.data?.hasToken);
-  const active = config ?? (serverReady ? {} : null);
+  const serverHasBase = Boolean(defaults.data?.hasBase);
+  const hasConfig = Boolean(config?.token || (serverHasBase && defaults.data?.hasToken));
 
-  return active ? (
+  const signOut = async () => {
+    await supabase.auth.signOut();
+    void navigate({ to: "/auth" });
+  };
+
+  return hasConfig ? (
     <Dashboard
-      config={active}
-      onDisconnect={
-        serverReady && !config
-          ? undefined
-          : () => {
-              clearConfig();
-              setConfig(null);
-            }
-      }
+      config={config ?? {}}
+      onSignOut={signOut}
+      onDisconnect={async () => {
+        await deleteConnection();
+        setConfig(null);
+      }}
     />
   ) : (
-    <ConnectScreen
-      needsBase={!defaults.data?.hasBase}
-      onConnected={(next) => {
-        saveConfig(next);
-        setConfig(next);
-      }}
+    <TokenScreen
+      needsBase={!serverHasBase}
+      onSignOut={signOut}
+      onConnected={(next) => setConfig(next)}
     />
   );
 }
 
-function ConnectScreen({
+function TokenScreen({
   needsBase,
   onConnected,
+  onSignOut,
 }: {
   needsBase: boolean;
   onConnected: (config: PanelConfig) => void;
+  onSignOut: () => void;
 }) {
   const [base, setBase] = useState("");
   const [token, setToken] = useState("");
@@ -118,6 +148,7 @@ function ConnectScreen({
     if (needsBase && base.trim()) candidate.base = base.trim();
     try {
       await api<{ data: unknown }>(candidate, "/api/dashboard");
+      await saveConnection(candidate);
       onConnected(candidate);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Falha ao conectar");
@@ -133,7 +164,7 @@ function ConnectScreen({
         <h1 className="mt-5 font-display text-2xl font-bold">Conectar ao bot</h1>
         <p className="mt-2 text-sm text-muted-foreground">
           No Telegram, abra <strong className="text-foreground">Painel Admin → 🌐 Painel Web</strong>{" "}
-          e copie o token de acesso.
+          e cole o token abaixo. Ele fica salvo na sua conta.
         </p>
         <form onSubmit={connect} className="mt-6 space-y-4">
           {needsBase ? (
@@ -167,38 +198,54 @@ function ConnectScreen({
             {loading ? "Conectando..." : "Conectar"}
           </button>
         </form>
+        <button onClick={onSignOut} className="mt-4 w-full text-sm text-muted-foreground underline">
+          Sair da conta
+        </button>
       </div>
     </main>
   );
 }
 
-
 function Dashboard({
   config,
   onDisconnect,
+  onSignOut,
 }: {
   config: PanelConfig;
-  onDisconnect?: (() => void) | undefined;
+  onDisconnect: () => void | Promise<void>;
+  onSignOut: () => void;
 }) {
   const [notifyOn, setNotifyOn] = useState(true);
+  const [kindFilter, setKindFilter] = useState<"" | "sales" | "recharge" | "gift">("");
   const { permission, requestPermission, recent } = useStartNotifications(config, notifyOn);
+  const key = config.base ?? "server";
 
   const dashboard = useQuery({
-    queryKey: ["dashboard", config.base ?? "server"],
+    queryKey: ["dashboard", key],
     queryFn: () => api<{ data: Dashboard }>(config, "/api/dashboard").then((r) => r.data),
     refetchInterval: 30_000,
   });
 
   const users = useQuery({
-    queryKey: ["users", config.base ?? "server"],
+    queryKey: ["users", key],
     queryFn: () => api<{ data: UserRow[] }>(config, "/api/users?limit=15").then((r) => r.data),
     refetchInterval: 60_000,
   });
 
   const orders = useQuery({
-    queryKey: ["orders", config.base ?? "server"],
+    queryKey: ["orders", key],
     queryFn: () => api<{ data: OrderRow[] }>(config, "/api/orders?limit=15").then((r) => r.data),
     refetchInterval: 60_000,
+  });
+
+  const notifications = useQuery({
+    queryKey: ["notifications", key, kindFilter],
+    queryFn: () =>
+      api<{ data: NotificationRow[] }>(
+        config,
+        `/api/notifications?limit=60${kindFilter ? `&kind=${kindFilter}` : ""}`,
+      ).then((r) => r.data),
+    refetchInterval: 20_000,
   });
 
   const data = dashboard.data;
@@ -242,11 +289,15 @@ function Dashboard({
           >
             🔄 Atualizar
           </button>
-          {onDisconnect ? (
-            <button onClick={onDisconnect} className="rounded-lg border border-border px-3 py-2">
-              Sair
-            </button>
-          ) : null}
+          <button
+            onClick={() => void onDisconnect()}
+            className="rounded-lg border border-border px-3 py-2"
+          >
+            Trocar token
+          </button>
+          <button onClick={onSignOut} className="rounded-lg border border-border px-3 py-2">
+            Sair
+          </button>
         </div>
       </header>
 
@@ -319,6 +370,65 @@ function Dashboard({
             ))}
             {recent.length === 0 ? (
               <li className="text-muted-foreground">Aguardando novos /start...</li>
+            ) : null}
+          </ul>
+        </Section>
+      </div>
+
+      <div className="mb-6">
+        <Section
+          title="Mensagens enviadas aos canais"
+          action={
+            <div className="flex flex-wrap gap-1.5 text-xs">
+              {(
+                [
+                  ["", "Tudo"],
+                  ["sales", "🛒 Vendas"],
+                  ["recharge", "💰 Recargas"],
+                  ["gift", "🎁 Gifts"],
+                ] as const
+              ).map(([value, label]) => (
+                <button
+                  key={value}
+                  onClick={() => setKindFilter(value)}
+                  className={`rounded-lg border px-2.5 py-1.5 ${
+                    kindFilter === value
+                      ? "border-primary text-primary"
+                      : "border-border text-muted-foreground"
+                  }`}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+          }
+        >
+          <ul className="space-y-3">
+            {(notifications.data ?? []).map((item) => (
+              <li key={item.id} className="rounded-lg border border-border bg-secondary/40 p-3">
+                <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-muted-foreground">
+                  <span className="font-medium text-foreground">
+                    {KIND_LABEL[item.kind] ?? item.kind}
+                  </span>
+                  <span>
+                    {item.created_at.slice(0, 10)} às {item.created_at.slice(11, 16)}
+                  </span>
+                </div>
+                <pre className="mt-2 whitespace-pre-wrap break-words font-sans text-sm text-foreground">
+                  {item.public_text || item.admin_text}
+                </pre>
+                {item.channels ? (
+                  <p className="mt-2 text-xs text-muted-foreground">Canais: {item.channels}</p>
+                ) : (
+                  <p className="mt-2 text-xs text-muted-foreground">Somente PV dos admins</p>
+                )}
+              </li>
+            ))}
+            {(notifications.data ?? []).length === 0 ? (
+              <li className="text-sm text-muted-foreground">
+                Nenhuma mensagem registrada ainda. Vendas, recargas e gifts aparecem aqui com data,
+                hora e texto completo.
+              </li>
             ) : null}
           </ul>
         </Section>
