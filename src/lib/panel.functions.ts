@@ -1,5 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 
+export type Json = string | number | boolean | null | Json[] | { [key: string]: Json };
+
 type ProxyInput = {
   base: string;
   token: string;
@@ -42,13 +44,13 @@ export const callBotApi = createServerFn({ method: "POST" })
         signal: controller.signal,
       });
       const text = await response.text();
-      let parsed: Record<string, unknown> = {};
+      let parsed: Json = {};
       try {
-        parsed = JSON.parse(text) as Record<string, unknown>;
+        parsed = JSON.parse(text) as Json;
       } catch {
         parsed = { ok: false, error: text.slice(0, 200) };
       }
-      return { status: response.status, ok: response.ok, payload: parsed as Record<string, unknown> };
+      return { status: response.status, ok: response.ok, payload: parsed };
     } catch (error) {
       return {
         status: 0,
