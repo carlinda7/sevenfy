@@ -252,53 +252,70 @@ function Dashboard({
   const starts = data?.starts;
 
   return (
-    <main className="mx-auto max-w-6xl px-4 py-8 pb-16">
-      <header className="mb-8 flex flex-wrap items-center justify-between gap-4">
-        <div className="flex items-center gap-3">
-          <img src="/icon-192.png" alt="" width={44} height={44} className="rounded-xl" />
-          <div>
-            <h1 className="font-display text-xl font-bold">{data?.loja ?? "Aura Panel"}</h1>
-            <p className="text-xs text-muted-foreground">
-              {dashboard.isError
-                ? "Sem conexão com o bot"
-                : data?.manutencao
-                  ? "🔧 Em manutenção"
-                  : "🟢 Bot online"}
-            </p>
+    <main className="safe-bottom mx-auto w-full max-w-6xl px-3 pb-10 pt-4 sm:px-5 sm:pt-6">
+      <header className="sticky top-0 z-20 -mx-3 mb-5 border-b border-border/50 bg-background/80 px-3 py-3 backdrop-blur-xl sm:static sm:mx-0 sm:mb-7 sm:border-0 sm:bg-transparent sm:px-0 sm:py-0 sm:backdrop-blur-none">
+        <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3">
+          <div className="flex min-w-0 items-center gap-3">
+            <img
+              src="/icon-192.png"
+              alt=""
+              width={44}
+              height={44}
+              className="size-10 shrink-0 rounded-2xl ring-1 ring-border sm:size-11"
+            />
+            <div className="min-w-0">
+              <h1 className="truncate font-display text-lg font-bold sm:text-2xl">
+                {data?.loja ?? "Aura Panel"}
+              </h1>
+              <p className="flex items-center gap-1.5 text-[0.7rem] text-muted-foreground sm:text-xs">
+                <span
+                  className={`inline-block size-1.5 rounded-full ${
+                    dashboard.isError
+                      ? "bg-destructive"
+                      : data?.manutencao
+                        ? "bg-warning"
+                        : "bg-accent"
+                  }`}
+                />
+                {dashboard.isError
+                  ? "Sem conexão com o bot"
+                  : data?.manutencao
+                    ? "Em manutenção"
+                    : "Bot online · tempo real"}
+              </p>
+            </div>
           </div>
-        </div>
-        <div className="flex flex-wrap items-center gap-2 text-sm">
           {permission !== "granted" ? (
             <button
               onClick={requestPermission}
-              className="rounded-lg bg-primary px-3 py-2 font-medium text-primary-foreground"
+              className="panel-gradient-btn shrink-0 rounded-full px-3.5 py-2 text-xs font-semibold sm:text-sm"
             >
-              🔔 Ativar notificações
+              🔔 <span className="hidden sm:inline">Ativar notificações</span>
+              <span className="sm:hidden">Ativar</span>
             </button>
           ) : (
             <button
               onClick={() => setNotifyOn((value) => !value)}
-              className="rounded-lg border border-border px-3 py-2"
+              className={`panel-chip shrink-0 ${notifyOn ? "panel-chip-active" : ""}`}
             >
-              {notifyOn ? "🔔 Notificações ativas" : "🔕 Notificações pausadas"}
+              {notifyOn ? "🔔" : "🔕"}
+              <span className="hidden sm:inline">{notifyOn ? "Ativas" : "Pausadas"}</span>
             </button>
           )}
-          <button
-            onClick={() => dashboard.refetch()}
-            className="rounded-lg border border-border px-3 py-2"
-          >
+        </div>
+
+        <div className="no-scrollbar -mx-3 mt-3 flex gap-2 overflow-x-auto px-3 sm:mx-0 sm:mt-4 sm:px-0">
+          <button onClick={() => dashboard.refetch()} className="panel-chip">
             🔄 Atualizar
           </button>
-          <button
-            onClick={() => void onDisconnect()}
-            className="rounded-lg border border-border px-3 py-2"
-          >
-            Trocar token
+          <button onClick={() => void onDisconnect()} className="panel-chip">
+            🔑 Trocar token
           </button>
-          <button onClick={onSignOut} className="rounded-lg border border-border px-3 py-2">
-            Sair
+          <button onClick={onSignOut} className="panel-chip">
+            ↩︎ Sair
           </button>
         </div>
+
       </header>
 
       {dashboard.isError ? (
