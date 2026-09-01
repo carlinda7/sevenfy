@@ -76,13 +76,19 @@ function AuthPage() {
   };
 
   return (
-    <main className="flex min-h-screen items-center justify-center px-4 py-12">
-      <div className="panel-card w-full max-w-md p-7">
-        <img src="/icon-192.png" alt="Aura Panel" width={56} height={56} className="rounded-2xl" />
-        <h1 className="mt-5 font-display text-2xl font-bold">
+    <main className="flex min-h-screen items-center justify-center px-4 py-10">
+      <div className="panel-card w-full max-w-md p-6 sm:p-8">
+        <img
+          src="/icon-192.png"
+          alt="Aura Panel"
+          width={56}
+          height={56}
+          className="size-14 rounded-2xl ring-1 ring-border"
+        />
+        <h1 className="mt-5 font-display text-2xl font-bold sm:text-3xl">
           {mode === "login" ? "Entrar no painel" : "Criar conta"}
         </h1>
-        <p className="mt-2 text-sm text-muted-foreground">
+        <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
           Depois de entrar você cola o token do bot (Painel Admin → 🌐 Painel Web) e ele fica salvo na
           sua conta.
         </p>
@@ -94,7 +100,7 @@ function AuthPage() {
               onChange={(event) => setEmail(event.target.value)}
               type="email"
               required
-              className="mt-1 w-full rounded-lg border border-input bg-secondary/60 px-3 py-2 text-foreground outline-none focus:border-primary"
+              className="mt-1.5 w-full rounded-xl border border-input bg-secondary/60 px-3.5 py-3 text-base text-foreground outline-none transition-colors focus:border-primary sm:text-sm"
             />
           </label>
           <label className="block text-sm">
@@ -105,7 +111,7 @@ function AuthPage() {
               type="password"
               minLength={6}
               required
-              className="mt-1 w-full rounded-lg border border-input bg-secondary/60 px-3 py-2 text-foreground outline-none focus:border-primary"
+              className="mt-1.5 w-full rounded-xl border border-input bg-secondary/60 px-3.5 py-3 text-base text-foreground outline-none transition-colors focus:border-primary sm:text-sm"
             />
           </label>
           {error ? <p className="text-sm text-destructive">{error}</p> : null}
@@ -113,11 +119,12 @@ function AuthPage() {
           <button
             type="submit"
             disabled={loading}
-            className="w-full rounded-lg bg-primary px-4 py-2.5 font-medium text-primary-foreground transition-opacity hover:opacity-90 disabled:opacity-60"
+            className="panel-gradient-btn w-full rounded-xl px-4 py-3 font-semibold transition-opacity hover:opacity-90 disabled:opacity-60"
           >
             {loading ? "Aguarde..." : mode === "login" ? "Entrar" : "Criar conta"}
           </button>
         </form>
+
         <button
           onClick={() => {
             setMode(mode === "login" ? "signup" : "login");
