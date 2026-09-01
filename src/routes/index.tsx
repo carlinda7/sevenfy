@@ -20,6 +20,8 @@ import {
   ShieldCheck,
   ShoppingCart,
   Sigma,
+  SlidersHorizontal,
+
   Sparkles,
   TrendingUp,
   Users,
