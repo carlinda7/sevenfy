@@ -473,7 +473,7 @@ function Dashboard({
         </Section>
       </div>
 
-      <div className="grid gap-4 lg:grid-cols-2">
+      <div className="grid gap-3 sm:gap-4 lg:grid-cols-2">
         <Section title="Pedidos recentes">
           <Table
             columns={["#", "Cliente", "Valor", "Data"]}
