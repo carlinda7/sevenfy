@@ -1,6 +1,30 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
+import {
+  Activity,
+  BellOff,
+  BellRing,
+  CalendarDays,
+  CalendarRange,
+  CircleDollarSign,
+  Gift,
+  KeyRound,
+  LogOut,
+  Link2,
+  Plug,
+  RefreshCw,
+  Repeat,
+  Rocket,
+  ShieldBan,
+  ShieldCheck,
+  ShoppingCart,
+  Sigma,
+  Sparkles,
+  TrendingUp,
+  Users,
+  Wallet,
+} from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { api, money, type Dashboard, type PanelConfig } from "@/lib/panel-client";
 import { deleteConnection, fetchConnection, saveConnection } from "@/lib/panel-store";
@@ -67,11 +91,15 @@ type NotificationRow = {
   created_at: string;
 };
 
-const KIND_LABEL: Record<string, string> = {
-  sales: "🛒 Venda",
-  recharge: "💰 Recarga",
-  gift: "🎁 Gift",
+const KIND_META: Record<string, { label: string; icon: typeof ShoppingCart }> = {
+  sales: { label: "Venda", icon: ShoppingCart },
+  recharge: { label: "Recarga", icon: Wallet },
+  gift: { label: "Gift", icon: Gift },
 };
+
+function kindMeta(kind: string) {
+  return KIND_META[kind] ?? { label: kind, icon: Activity };
+}
 
 function PanelPage() {
   const navigate = useNavigate();
@@ -105,180 +133,91 @@ function PanelPage() {
     };
   }, [navigate]);
 
-  if (checking || defaults.isLoading || !signedIn) {
+  if (checking || !signedIn) {
     return <div className="min-h-screen bg-background" />;
   }
-
-  const serverHasBase = Boolean(defaults.data?.hasBase);
-  const hasConfig = Boolean(config?.token || (serverHasBase && defaults.data?.hasToken));
 
   const signOut = async () => {
     await supabase.auth.signOut();
     void navigate({ to: "/auth" });
   };
 
-  return hasConfig ? (
-    <Dashboard
-      config={config ?? {}}
+  // Acesso ao dashboard é liberado logo após criar a conta. A conexão com o bot
+  // (token e, opcionalmente, URL) é configurada dentro do próprio painel.
+  return (
+    <DashboardPage
+      config={config}
+      serverReady={Boolean(defaults.data?.hasBase && defaults.data?.hasToken)}
       onSignOut={signOut}
+      onSaveConfig={async (next) => {
+        await saveConnection(next);
+        setConfig(next);
+      }}
       onDisconnect={async () => {
         await deleteConnection();
         setConfig(null);
       }}
     />
-  ) : (
-    <TokenScreen
-      needsBase={!serverHasBase}
-      onSignOut={signOut}
-      onConnected={(next) => setConfig(next)}
-    />
   );
 }
 
-function TokenScreen({
-  needsBase,
-  onConnected,
-  onSignOut,
-}: {
-  needsBase: boolean;
-  onConnected: (config: PanelConfig) => void;
-  onSignOut: () => void;
-}) {
-  const [base, setBase] = useState("");
-  const [token, setToken] = useState("");
-  const [error, setError] = useState<string | null>(null);
-  const [loading, setLoading] = useState(false);
-
-  const connect = async (event: React.FormEvent) => {
-    event.preventDefault();
-    setLoading(true);
-    setError(null);
-    const candidate: PanelConfig = { token: token.trim() };
-    if (needsBase && base.trim()) candidate.base = base.trim();
-    try {
-      await api<{ data: unknown }>(candidate, "/api/dashboard");
-      await saveConnection(candidate);
-      toast.success("Bot conectado", { description: "Carregando métricas em tempo real." });
-      onConnected(candidate);
-    } catch (err) {
-      const message = err instanceof Error ? err.message : "Falha ao conectar";
-      setError(message);
-      toast.error("Não conseguimos falar com o bot", { description: message });
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const inputClass =
-    "mt-1.5 w-full rounded-xl border border-input bg-secondary/50 px-3.5 py-3 text-base text-foreground outline-none transition-all placeholder:text-muted-foreground/60 focus:border-primary focus:ring-4 focus:ring-primary/15 sm:text-sm";
-
-  return (
-    <main className="flex min-h-screen items-center justify-center px-4 py-10">
-      <div className="panel-card w-full max-w-md overflow-hidden">
-        <div className="h-1 w-full bg-linear-to-r from-primary via-primary/60 to-accent" />
-        <div className="p-6 sm:p-8">
-          <img
-            src="/icon-192.png"
-            alt="Aura Panel"
-            width={56}
-            height={56}
-            className="size-14 rounded-2xl ring-1 ring-border"
-          />
-          <h1 className="mt-5 font-display text-2xl font-bold sm:text-3xl">Conectar ao bot</h1>
-          <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
-            No Telegram, abra{" "}
-            <strong className="text-foreground">Painel Admin → 🌐 Painel Web</strong> e cole o token
-            abaixo. Ele fica salvo na sua conta.
-          </p>
-          <form onSubmit={connect} className="mt-6 space-y-4">
-            {needsBase ? (
-              <label className="block text-sm">
-                <span className="text-muted-foreground">URL da API</span>
-                <input
-                  value={base}
-                  onChange={(event) => setBase(event.target.value)}
-                  placeholder="http://123.45.67.89:8090"
-                  required
-                  className={inputClass}
-                />
-              </label>
-            ) : null}
-            <label className="block text-sm">
-              <span className="text-muted-foreground">Token</span>
-              <input
-                value={token}
-                onChange={(event) => setToken(event.target.value)}
-                type="password"
-                placeholder="cole o token do painel"
-                required
-                className={inputClass}
-              />
-            </label>
-            {error ? (
-              <div className="rounded-xl border border-destructive/40 bg-destructive/10 px-3.5 py-3 text-sm text-destructive">
-                {error}
-              </div>
-            ) : null}
-            <button
-              type="submit"
-              disabled={loading}
-              className="panel-gradient-btn w-full rounded-xl px-4 py-3 font-semibold transition-opacity hover:opacity-90 disabled:opacity-60"
-            >
-              {loading ? "Conectando..." : "Conectar"}
-            </button>
-          </form>
-
-          <button
-            onClick={onSignOut}
-            className="mt-4 w-full text-sm text-muted-foreground underline"
-          >
-            Sair da conta
-          </button>
-        </div>
-      </div>
-    </main>
-  );
-}
-
-function Dashboard({
+function DashboardPage({
   config,
+  serverReady,
   onDisconnect,
+  onSaveConfig,
   onSignOut,
 }: {
-  config: PanelConfig;
+  config: PanelConfig | null;
+  serverReady: boolean;
   onDisconnect: () => void | Promise<void>;
+  onSaveConfig: (config: PanelConfig) => Promise<void>;
   onSignOut: () => void;
 }) {
   const [notifyOn, setNotifyOn] = useState(true);
   const [kindFilter, setKindFilter] = useState<"" | "sales" | "recharge" | "gift">("");
   const [confirm, setConfirm] = useState<null | "token" | "signout">(null);
   const [detail, setDetail] = useState<NotificationRow | null>(null);
-  const { permission, requestPermission, recent } = useStartNotifications(config, notifyOn);
-  const key = config.base ?? "server";
+  const [connectOpen, setConnectOpen] = useState(false);
+
+  const connected = Boolean(config?.token || serverReady);
+  const activeConfig: PanelConfig = config ?? {};
+  const { permission, requestPermission, recent } = useStartNotifications(
+    connected ? activeConfig : null,
+    notifyOn,
+  );
+  const key = config?.base ?? "server";
+
+  const enabled = connected;
 
   const dashboard = useQuery({
-    queryKey: ["dashboard", key],
-    queryFn: () => api<{ data: Dashboard }>(config, "/api/dashboard").then((r) => r.data),
+    queryKey: ["dashboard", key, connected],
+    enabled,
+    queryFn: () => api<{ data: Dashboard }>(activeConfig, "/api/dashboard").then((r) => r.data),
     refetchInterval: 30_000,
   });
 
   const users = useQuery({
-    queryKey: ["users", key],
-    queryFn: () => api<{ data: UserRow[] }>(config, "/api/users?limit=15").then((r) => r.data),
+    queryKey: ["users", key, connected],
+    enabled,
+    queryFn: () => api<{ data: UserRow[] }>(activeConfig, "/api/users?limit=15").then((r) => r.data),
     refetchInterval: 60_000,
   });
 
   const orders = useQuery({
-    queryKey: ["orders", key],
-    queryFn: () => api<{ data: OrderRow[] }>(config, "/api/orders?limit=15").then((r) => r.data),
+    queryKey: ["orders", key, connected],
+    enabled,
+    queryFn: () =>
+      api<{ data: OrderRow[] }>(activeConfig, "/api/orders?limit=15").then((r) => r.data),
     refetchInterval: 60_000,
   });
 
   const notifications = useQuery({
-    queryKey: ["notifications", key, kindFilter],
+    queryKey: ["notifications", key, kindFilter, connected],
+    enabled,
     queryFn: () =>
       api<{ data: NotificationRow[] }>(
-        config,
+        activeConfig,
         `/api/notifications?limit=60${kindFilter ? `&kind=${kindFilter}` : ""}`,
       ).then((r) => r.data),
     refetchInterval: 20_000,
@@ -286,6 +225,14 @@ function Dashboard({
 
   const data = dashboard.data;
   const starts = data?.starts;
+
+  const statusLabel = !connected
+    ? "Bot não conectado"
+    : dashboard.isError
+      ? "Sem conexão com o bot"
+      : data?.manutencao
+        ? "Em manutenção"
+        : "Bot online · tempo real";
 
   return (
     <main className="safe-bottom mx-auto w-full max-w-6xl px-3 pb-10 pt-4 sm:px-5 sm:pt-6">
@@ -306,27 +253,24 @@ function Dashboard({
               <p className="flex items-center gap-1.5 text-[0.7rem] text-muted-foreground sm:text-xs">
                 <span
                   className={`inline-block size-1.5 rounded-full ${
-                    dashboard.isError
+                    !connected || dashboard.isError
                       ? "bg-destructive"
                       : data?.manutencao
                         ? "bg-warning"
                         : "bg-accent"
                   }`}
                 />
-                {dashboard.isError
-                  ? "Sem conexão com o bot"
-                  : data?.manutencao
-                    ? "Em manutenção"
-                    : "Bot online · tempo real"}
+                {statusLabel}
               </p>
             </div>
           </div>
           {permission !== "granted" ? (
             <button
               onClick={requestPermission}
-              className="panel-gradient-btn shrink-0 rounded-full px-3.5 py-2 text-xs font-semibold sm:text-sm"
+              className="panel-gradient-btn inline-flex shrink-0 items-center gap-1.5 rounded-full px-3.5 py-2 text-xs font-semibold sm:text-sm"
             >
-              🔔 <span className="hidden sm:inline">Ativar notificações</span>
+              <BellRing className="size-4" aria-hidden />
+              <span className="hidden sm:inline">Ativar notificações</span>
               <span className="sm:hidden">Ativar</span>
             </button>
           ) : (
@@ -334,7 +278,11 @@ function Dashboard({
               onClick={() => setNotifyOn((value) => !value)}
               className={`panel-chip shrink-0 ${notifyOn ? "panel-chip-active" : ""}`}
             >
-              {notifyOn ? "🔔" : "🔕"}
+              {notifyOn ? (
+                <BellRing className="size-4" aria-hidden />
+              ) : (
+                <BellOff className="size-4" aria-hidden />
+              )}
               <span className="hidden sm:inline">{notifyOn ? "Ativas" : "Pausadas"}</span>
             </button>
           )}
@@ -353,19 +301,48 @@ function Dashboard({
             }}
             className="panel-chip"
           >
-            🔄 Atualizar
+            <RefreshCw className="size-4" aria-hidden /> Atualizar
           </button>
-          <button onClick={() => setConfirm("token")} className="panel-chip">
-            🔑 Trocar token
+          <button onClick={() => setConnectOpen(true)} className="panel-chip">
+            <Plug className="size-4" aria-hidden /> {connected ? "Conexão" : "Conectar bot"}
           </button>
+          {config?.token ? (
+            <button onClick={() => setConfirm("token")} className="panel-chip">
+              <KeyRound className="size-4" aria-hidden /> Trocar token
+            </button>
+          ) : null}
           <button onClick={() => setConfirm("signout")} className="panel-chip">
-            ↩︎ Sair
+            <LogOut className="size-4" aria-hidden /> Sair
           </button>
         </div>
-
       </header>
 
-      {dashboard.isError ? (
+      {!connected ? (
+        <div className="panel-card mb-5 flex flex-col gap-3 border-primary/40 p-4 sm:flex-row sm:items-center sm:justify-between sm:p-5">
+          <div className="flex items-start gap-3">
+            <span className="grid size-10 shrink-0 place-items-center rounded-2xl bg-primary/15 text-primary">
+              <Sparkles className="size-5" aria-hidden />
+            </span>
+            <div>
+              <p className="font-display text-sm font-bold sm:text-base">
+                Bem-vindo ao seu painel
+              </p>
+              <p className="mt-1 text-xs leading-relaxed text-muted-foreground sm:text-sm">
+                Cole o token do bot (Telegram → Painel Admin → Painel Web) para preencher as
+                métricas. Você já pode explorar o painel sem isso.
+              </p>
+            </div>
+          </div>
+          <button
+            onClick={() => setConnectOpen(true)}
+            className="panel-gradient-btn inline-flex shrink-0 items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold"
+          >
+            <Link2 className="size-4" aria-hidden /> Conectar bot
+          </button>
+        </div>
+      ) : null}
+
+      {connected && dashboard.isError ? (
         <div className="panel-card mb-6 border-destructive/50 p-4 text-sm text-destructive">
           {(dashboard.error as Error).message}
         </div>
@@ -374,28 +351,28 @@ function Dashboard({
       <div className="mb-3 grid grid-cols-2 gap-2.5 sm:gap-3 md:grid-cols-4">
         <StatCard
           label="Starts hoje"
-          icon="🚀"
+          icon={<Rocket className="size-4" aria-hidden />}
           value={starts?.hoje ?? "—"}
           hint={starts ? `${starts.hoje_unicos} únicos · ${starts.hoje_novos} novos` : undefined}
           accent
         />
         <StatCard
           label="Starts 7 dias"
-          icon="📅"
+          icon={<CalendarDays className="size-4" aria-hidden />}
           tone="neutral"
           value={starts?.d7 ?? "—"}
           hint={starts ? `${starts.d7_unicos} únicos` : undefined}
         />
         <StatCard
           label="Starts 30 dias"
-          icon="🗓️"
+          icon={<CalendarRange className="size-4" aria-hidden />}
           tone="neutral"
           value={starts?.d30 ?? "—"}
           hint={starts ? `${starts.d30_unicos} únicos` : undefined}
         />
         <StatCard
           label="Starts total"
-          icon="∑"
+          icon={<Sigma className="size-4" aria-hidden />}
           tone="neutral"
           value={starts?.total ?? "—"}
           hint={starts ? `${starts.total_unicos} pessoas` : undefined}
@@ -405,33 +382,32 @@ function Dashboard({
       <div className="mb-5 grid grid-cols-2 gap-2.5 sm:gap-3 md:grid-cols-4">
         <StatCard
           label="Faturamento hoje"
-          icon="💸"
+          icon={<CircleDollarSign className="size-4" aria-hidden />}
           tone="accent"
           value={money(data?.faturamento.hoje ?? 0)}
           accent
         />
         <StatCard
           label="Faturamento 30d"
-          icon="📈"
+          icon={<TrendingUp className="size-4" aria-hidden />}
           tone="accent"
           value={money(data?.faturamento.d30 ?? 0)}
           hint={`Total ${money(data?.faturamento.total ?? 0)}`}
         />
         <StatCard
           label="Recargas pagas hoje"
-          icon="💰"
+          icon={<Wallet className="size-4" aria-hidden />}
           tone="warning"
           value={money(data?.recargas.pagas_hoje ?? 0)}
           hint={`${data?.recargas.pendentes ?? 0} pendentes`}
         />
         <StatCard
           label="Usuários"
-          icon="👥"
+          icon={<Users className="size-4" aria-hidden />}
           value={data?.usuarios.total ?? "—"}
           hint={`${data?.usuarios.hoje ?? 0} hoje · ${data?.usuarios.banidos ?? 0} banidos`}
         />
       </div>
-
 
       <div className="mb-4 grid gap-3 sm:gap-4 lg:grid-cols-3">
         <div className="lg:col-span-2">
@@ -449,13 +425,20 @@ function Dashboard({
                 <span className="min-w-0 truncate font-medium">
                   {event.username ? `@${event.username}` : event.first_name || event.telegram_id}
                 </span>
-                <span className="shrink-0 text-xs tabular-nums text-muted-foreground">
-                  {event.is_new ? "🆕" : "🔁"} {event.created_at.slice(11, 16)}
+                <span className="flex shrink-0 items-center gap-1.5 text-xs tabular-nums text-muted-foreground">
+                  {event.is_new ? (
+                    <Sparkles className="size-3.5 text-accent" aria-hidden />
+                  ) : (
+                    <Repeat className="size-3.5" aria-hidden />
+                  )}
+                  {event.created_at.slice(11, 16)}
                 </span>
               </li>
             ))}
             {recent.length === 0 ? (
-              <li className="text-muted-foreground">Aguardando novos /start...</li>
+              <li className="text-muted-foreground">
+                {connected ? "Aguardando novos /start..." : "Conecte o bot para ver os /start."}
+              </li>
             ) : null}
           </ul>
         </Section>
@@ -468,48 +451,52 @@ function Dashboard({
             <div className="no-scrollbar flex max-w-[55vw] gap-1.5 overflow-x-auto sm:max-w-none">
               {(
                 [
-                  ["", "Tudo"],
-                  ["sales", "🛒 Vendas"],
-                  ["recharge", "💰 Recargas"],
-                  ["gift", "🎁 Gifts"],
+                  ["", "Tudo", Activity],
+                  ["sales", "Vendas", ShoppingCart],
+                  ["recharge", "Recargas", Wallet],
+                  ["gift", "Gifts", Gift],
                 ] as const
-              ).map(([value, label]) => (
+              ).map(([value, label, Icon]) => (
                 <button
                   key={value}
                   onClick={() => setKindFilter(value)}
                   className={`panel-chip text-xs ${kindFilter === value ? "panel-chip-active" : "text-muted-foreground"}`}
                 >
-                  {label}
+                  <Icon className="size-3.5" aria-hidden /> {label}
                 </button>
               ))}
             </div>
           }
         >
           <ul className="space-y-2.5">
-            {(notifications.data ?? []).map((item) => (
-              <li key={item.id}>
-                <button
-                  onClick={() => setDetail(item)}
-                  className="w-full rounded-2xl border border-border/60 bg-secondary/35 p-3 text-left transition-all hover:border-primary/50 hover:bg-secondary/55"
-                >
-                  <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-muted-foreground">
-                    <span className="panel-chip py-1 text-xs font-semibold text-foreground">
-                      {KIND_LABEL[item.kind] ?? item.kind}
-                    </span>
-                    <span className="tabular-nums">
-                      {item.created_at.slice(0, 10)} às {item.created_at.slice(11, 16)}
-                    </span>
-                  </div>
-                  <pre className="mt-2.5 line-clamp-4 whitespace-pre-wrap break-words font-sans text-sm leading-relaxed text-foreground">
-                    {item.public_text || item.admin_text}
-                  </pre>
-                  <p className="mt-2 text-xs text-muted-foreground">
-                    {item.channels ? `Canais: ${item.channels}` : "Somente PV dos admins"} · ver
-                    detalhes
-                  </p>
-                </button>
-              </li>
-            ))}
+            {(notifications.data ?? []).map((item) => {
+              const meta = kindMeta(item.kind);
+              const Icon = meta.icon;
+              return (
+                <li key={item.id}>
+                  <button
+                    onClick={() => setDetail(item)}
+                    className="w-full rounded-2xl border border-border/60 bg-secondary/35 p-3 text-left transition-all hover:border-primary/50 hover:bg-secondary/55"
+                  >
+                    <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-muted-foreground">
+                      <span className="panel-chip py-1 text-xs font-semibold text-foreground">
+                        <Icon className="size-3.5" aria-hidden /> {meta.label}
+                      </span>
+                      <span className="tabular-nums">
+                        {item.created_at.slice(0, 10)} às {item.created_at.slice(11, 16)}
+                      </span>
+                    </div>
+                    <pre className="mt-2.5 line-clamp-4 whitespace-pre-wrap break-words font-sans text-sm leading-relaxed text-foreground">
+                      {item.public_text || item.admin_text}
+                    </pre>
+                    <p className="mt-2 text-xs text-muted-foreground">
+                      {item.channels ? `Canais: ${item.channels}` : "Somente PV dos admins"} · ver
+                      detalhes
+                    </p>
+                  </button>
+                </li>
+              );
+            })}
 
             {(notifications.data ?? []).length === 0 ? (
               <li className="text-sm text-muted-foreground">
@@ -542,16 +529,31 @@ function Dashboard({
               user.telegram_id,
               user.username ? `@${user.username}` : user.first_name || "—",
               money(user.balance),
-              user.is_banned ? "🚫 Banido" : "✅ Ativo",
+              user.is_banned ? (
+                <span className="inline-flex items-center gap-1.5 text-destructive">
+                  <ShieldBan className="size-3.5" aria-hidden /> Banido
+                </span>
+              ) : (
+                <span className="inline-flex items-center gap-1.5 text-accent">
+                  <ShieldCheck className="size-3.5" aria-hidden /> Ativo
+                </span>
+              ),
             ])}
           />
         </Section>
       </div>
 
+      <ConnectDialog
+        open={connectOpen}
+        onOpenChange={setConnectOpen}
+        current={config}
+        onSave={onSaveConfig}
+      />
+
       <ConfirmDialog
         open={confirm === "token"}
         onOpenChange={(open) => setConfirm(open ? "token" : null)}
-        icon="🔑"
+        icon={<KeyRound className="size-5" aria-hidden />}
         title="Trocar o token do bot?"
         description="O painel vai desconectar do bot e pedir um novo token. Suas métricas não são apagadas."
         confirmLabel="Trocar token"
@@ -565,7 +567,7 @@ function Dashboard({
       <ConfirmDialog
         open={confirm === "signout"}
         onOpenChange={(open) => setConfirm(open ? "signout" : null)}
-        icon="↩︎"
+        icon={<LogOut className="size-5" aria-hidden />}
         title="Sair da sua conta?"
         description="Você vai precisar entrar novamente com e-mail e senha para acessar o painel."
         confirmLabel="Sair agora"
@@ -581,8 +583,16 @@ function Dashboard({
           <div className="h-1 w-full rounded-t-[inherit] bg-linear-to-r from-primary to-accent" />
           <div className="p-5 sm:p-6">
             <DialogHeader className="text-left">
-              <DialogTitle className="font-display text-lg font-bold tracking-tight">
-                {detail ? (KIND_LABEL[detail.kind] ?? detail.kind) : ""}
+              <DialogTitle className="flex items-center gap-2 font-display text-lg font-bold tracking-tight">
+                {detail ? (
+                  <>
+                    {(() => {
+                      const Icon = kindMeta(detail.kind).icon;
+                      return <Icon className="size-5 text-primary" aria-hidden />;
+                    })()}
+                    {kindMeta(detail.kind).label}
+                  </>
+                ) : null}
               </DialogTitle>
               <DialogDescription className="text-xs text-muted-foreground">
                 {detail
@@ -616,5 +626,122 @@ function Dashboard({
         </DialogContent>
       </Dialog>
     </main>
+  );
+}
+
+const inputClass =
+  "mt-1.5 w-full rounded-xl border border-input bg-secondary/50 px-3.5 py-3 text-base text-foreground outline-none transition-all placeholder:text-muted-foreground/60 focus:border-primary focus:ring-4 focus:ring-primary/15 sm:text-sm";
+
+function ConnectDialog({
+  open,
+  onOpenChange,
+  current,
+  onSave,
+}: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  current: PanelConfig | null;
+  onSave: (config: PanelConfig) => Promise<void>;
+}) {
+  const [token, setToken] = useState("");
+  const [base, setBase] = useState(current?.base ?? "");
+  const [advanced, setAdvanced] = useState(Boolean(current?.base));
+  const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
+
+  const submit = async (event: React.FormEvent) => {
+    event.preventDefault();
+    setLoading(true);
+    setError(null);
+    const candidate: PanelConfig = {};
+    if (token.trim()) candidate.token = token.trim();
+    else if (current?.token) candidate.token = current.token;
+    if (base.trim()) candidate.base = base.trim();
+    try {
+      await api<{ data: unknown }>(candidate, "/api/dashboard");
+      await onSave(candidate);
+      toast.success("Bot conectado", { description: "Carregando métricas em tempo real." });
+      setToken("");
+      onOpenChange(false);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Falha ao conectar";
+      setError(message);
+      toast.error("Não conseguimos falar com o bot", { description: message });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="panel-card max-w-[calc(100vw-1.5rem)] gap-0 border-border/70 bg-card/95 p-0 sm:max-w-md">
+        <div className="h-1 w-full rounded-t-[inherit] bg-linear-to-r from-primary to-accent" />
+        <div className="p-5 sm:p-6">
+          <DialogHeader className="text-left">
+            <span
+              className="mb-3 grid size-11 place-items-center rounded-2xl bg-primary/15 text-primary"
+              aria-hidden
+            >
+              <Plug className="size-5" />
+            </span>
+            <DialogTitle className="font-display text-lg font-bold tracking-tight">
+              Conectar ao bot
+            </DialogTitle>
+            <DialogDescription className="text-sm leading-relaxed text-muted-foreground">
+              No Telegram, abra <strong className="text-foreground">Painel Admin → Painel Web</strong>{" "}
+              e cole o token. A URL da API é opcional — o servidor já sabe onde falar com o bot.
+            </DialogDescription>
+          </DialogHeader>
+
+          <form onSubmit={submit} className="mt-5 space-y-4">
+            <label className="block text-sm">
+              <span className="text-muted-foreground">Token do painel</span>
+              <input
+                value={token}
+                onChange={(event) => setToken(event.target.value)}
+                type="password"
+                placeholder={current?.token ? "token salvo — cole para trocar" : "cole o token"}
+                className={inputClass}
+              />
+            </label>
+
+            {advanced ? (
+              <label className="block text-sm">
+                <span className="text-muted-foreground">URL da API (opcional)</span>
+                <input
+                  value={base}
+                  onChange={(event) => setBase(event.target.value)}
+                  placeholder="deixe vazio para usar o servidor"
+                  className={inputClass}
+                />
+              </label>
+            ) : (
+              <button
+                type="button"
+                onClick={() => setAdvanced(true)}
+                className="text-xs text-muted-foreground underline"
+              >
+                Usar uma URL de API própria
+              </button>
+            )}
+
+            {error ? (
+              <div className="rounded-xl border border-destructive/40 bg-destructive/10 px-3.5 py-3 text-sm text-destructive">
+                {error}
+              </div>
+            ) : null}
+
+            <button
+              type="submit"
+              disabled={loading}
+              className="panel-gradient-btn inline-flex w-full items-center justify-center gap-2 rounded-xl px-4 py-3 font-semibold transition-opacity hover:opacity-90 disabled:opacity-60"
+            >
+              <Link2 className="size-4" aria-hidden />
+              {loading ? "Conectando..." : "Conectar"}
+            </button>
+          </form>
+        </div>
+      </DialogContent>
+    </Dialog>
   );
 }
