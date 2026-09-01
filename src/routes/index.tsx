@@ -324,48 +324,67 @@ function Dashboard({
         </div>
       ) : null}
 
-      <div className="mb-6 grid grid-cols-2 gap-3 md:grid-cols-4">
+      <div className="mb-3 grid grid-cols-2 gap-2.5 sm:gap-3 md:grid-cols-4">
         <StatCard
           label="Starts hoje"
+          icon="🚀"
           value={starts?.hoje ?? "—"}
           hint={starts ? `${starts.hoje_unicos} únicos · ${starts.hoje_novos} novos` : undefined}
           accent
         />
         <StatCard
           label="Starts 7 dias"
+          icon="📅"
+          tone="neutral"
           value={starts?.d7 ?? "—"}
           hint={starts ? `${starts.d7_unicos} únicos` : undefined}
         />
         <StatCard
           label="Starts 30 dias"
+          icon="🗓️"
+          tone="neutral"
           value={starts?.d30 ?? "—"}
           hint={starts ? `${starts.d30_unicos} únicos` : undefined}
         />
         <StatCard
           label="Starts total"
+          icon="∑"
+          tone="neutral"
           value={starts?.total ?? "—"}
           hint={starts ? `${starts.total_unicos} pessoas` : undefined}
         />
       </div>
 
-      <div className="mb-6 grid grid-cols-2 gap-3 md:grid-cols-4">
-        <StatCard label="Faturamento hoje" value={money(data?.faturamento.hoje ?? 0)} accent />
+      <div className="mb-5 grid grid-cols-2 gap-2.5 sm:gap-3 md:grid-cols-4">
+        <StatCard
+          label="Faturamento hoje"
+          icon="💸"
+          tone="accent"
+          value={money(data?.faturamento.hoje ?? 0)}
+          accent
+        />
         <StatCard
           label="Faturamento 30d"
+          icon="📈"
+          tone="accent"
           value={money(data?.faturamento.d30 ?? 0)}
           hint={`Total ${money(data?.faturamento.total ?? 0)}`}
         />
         <StatCard
           label="Recargas pagas hoje"
+          icon="💰"
+          tone="warning"
           value={money(data?.recargas.pagas_hoje ?? 0)}
           hint={`${data?.recargas.pendentes ?? 0} pendentes`}
         />
         <StatCard
           label="Usuários"
+          icon="👥"
           value={data?.usuarios.total ?? "—"}
           hint={`${data?.usuarios.hoje ?? 0} hoje · ${data?.usuarios.banidos ?? 0} banidos`}
         />
       </div>
+
 
       <div className="mb-6 grid gap-4 lg:grid-cols-3">
         <div className="lg:col-span-2">
