@@ -3,8 +3,8 @@ import { createServerFn } from "@tanstack/react-start";
 export type Json = string | number | boolean | null | Json[] | { [key: string]: Json };
 
 type ProxyInput = {
-  base: string;
-  token: string;
+  base?: string | undefined;
+  token?: string | undefined;
   path: string;
   method?: "GET" | "POST";
   body?: unknown;
@@ -16,20 +16,37 @@ function normalize(base: string) {
   return trimmed;
 }
 
+/** Informa ao painel se o servidor já tem URL/token do bot configurados. */
+export const getPanelDefaults = createServerFn({ method: "GET" }).handler(async () => ({
+  hasBase: Boolean(process.env["BOT_API_BASE"]),
+  hasToken: Boolean(process.env["BOT_API_TOKEN"]),
+}));
+
 /**
  * Proxy para a API do bot (aiohttp). Roda no servidor para evitar CORS e
  * bloqueio de conteúdo misto (painel em https -> bot em http).
  */
 export const callBotApi = createServerFn({ method: "POST" })
   .inputValidator((input: ProxyInput) => {
-    if (!input || typeof input.base !== "string" || typeof input.path !== "string") {
-      throw new Error("Parâmetros inválidos");
-    }
+    if (!input || typeof input.path !== "string") throw new Error("Parâmetros inválidos");
     if (!input.path.startsWith("/api/")) throw new Error("Rota inválida");
     return input;
   })
   .handler(async ({ data }) => {
-    const url = `${normalize(data.base)}${data.path}`;
+    const base = (data.base?.trim() || process.env["BOT_API_BASE"] || "").trim();
+    const token = (data.token?.trim() || process.env["BOT_API_TOKEN"] || "").trim();
+    if (!base) {
+      return {
+        status: 0,
+        ok: false,
+        payload: {
+          ok: false,
+          error:
+            "URL da API do bot não configurada no servidor. Informe a URL manualmente ou salve o segredo BOT_API_BASE.",
+        },
+      };
+    }
+    const url = `${normalize(base)}${data.path}`;
     const isPost = data.method === "POST";
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), 12_000);
@@ -37,7 +54,7 @@ export const callBotApi = createServerFn({ method: "POST" })
       const response = await fetch(url, {
         method: data.method ?? "GET",
         headers: {
-          Authorization: `Bearer ${data.token}`,
+          Authorization: `Bearer ${token}`,
           "Content-Type": "application/json",
         },
         ...(isPost ? { body: JSON.stringify(data.body ?? {}) } : {}),
