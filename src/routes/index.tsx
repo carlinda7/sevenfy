@@ -7,6 +7,15 @@ import { deleteConnection, fetchConnection, saveConnection } from "@/lib/panel-s
 import { getPanelDefaults } from "@/lib/panel.functions";
 import { useStartNotifications } from "@/lib/use-start-notifications";
 import { Section, StartsChart, StatCard, Table } from "@/components/panel/parts";
+import { ConfirmDialog } from "@/components/panel/confirm-dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { toast } from "sonner";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -149,65 +158,83 @@ function TokenScreen({
     try {
       await api<{ data: unknown }>(candidate, "/api/dashboard");
       await saveConnection(candidate);
+      toast.success("Bot conectado", { description: "Carregando métricas em tempo real." });
       onConnected(candidate);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Falha ao conectar");
+      const message = err instanceof Error ? err.message : "Falha ao conectar";
+      setError(message);
+      toast.error("Não conseguimos falar com o bot", { description: message });
     } finally {
       setLoading(false);
     }
   };
 
+  const inputClass =
+    "mt-1.5 w-full rounded-xl border border-input bg-secondary/50 px-3.5 py-3 text-base text-foreground outline-none transition-all placeholder:text-muted-foreground/60 focus:border-primary focus:ring-4 focus:ring-primary/15 sm:text-sm";
+
   return (
     <main className="flex min-h-screen items-center justify-center px-4 py-10">
-      <div className="panel-card w-full max-w-md p-6 sm:p-8">
-        <img
-          src="/icon-192.png"
-          alt="Aura Panel"
-          width={56}
-          height={56}
-          className="size-14 rounded-2xl ring-1 ring-border"
-        />
-        <h1 className="mt-5 font-display text-2xl font-bold sm:text-3xl">Conectar ao bot</h1>
-        <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
-          No Telegram, abra <strong className="text-foreground">Painel Admin → 🌐 Painel Web</strong>{" "}
-          e cole o token abaixo. Ele fica salvo na sua conta.
-        </p>
-        <form onSubmit={connect} className="mt-6 space-y-4">
-          {needsBase ? (
+      <div className="panel-card w-full max-w-md overflow-hidden">
+        <div className="h-1 w-full bg-linear-to-r from-primary via-primary/60 to-accent" />
+        <div className="p-6 sm:p-8">
+          <img
+            src="/icon-192.png"
+            alt="Aura Panel"
+            width={56}
+            height={56}
+            className="size-14 rounded-2xl ring-1 ring-border"
+          />
+          <h1 className="mt-5 font-display text-2xl font-bold sm:text-3xl">Conectar ao bot</h1>
+          <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
+            No Telegram, abra{" "}
+            <strong className="text-foreground">Painel Admin → 🌐 Painel Web</strong> e cole o token
+            abaixo. Ele fica salvo na sua conta.
+          </p>
+          <form onSubmit={connect} className="mt-6 space-y-4">
+            {needsBase ? (
+              <label className="block text-sm">
+                <span className="text-muted-foreground">URL da API</span>
+                <input
+                  value={base}
+                  onChange={(event) => setBase(event.target.value)}
+                  placeholder="http://123.45.67.89:8090"
+                  required
+                  className={inputClass}
+                />
+              </label>
+            ) : null}
             <label className="block text-sm">
-              <span className="text-muted-foreground">URL da API</span>
+              <span className="text-muted-foreground">Token</span>
               <input
-                value={base}
-                onChange={(event) => setBase(event.target.value)}
-                placeholder="http://123.45.67.89:8090"
+                value={token}
+                onChange={(event) => setToken(event.target.value)}
+                type="password"
+                placeholder="cole o token do painel"
                 required
-                className="mt-1.5 w-full rounded-xl border border-input bg-secondary/60 px-3.5 py-3 text-base text-foreground outline-none transition-colors focus:border-primary sm:text-sm"
+                className={inputClass}
               />
             </label>
-          ) : null}
-          <label className="block text-sm">
-            <span className="text-muted-foreground">Token</span>
-            <input
-              value={token}
-              onChange={(event) => setToken(event.target.value)}
-              type="password"
-              required
-              className="mt-1.5 w-full rounded-xl border border-input bg-secondary/60 px-3.5 py-3 text-base text-foreground outline-none transition-colors focus:border-primary sm:text-sm"
-            />
-          </label>
-          {error ? <p className="text-sm text-destructive">{error}</p> : null}
-          <button
-            type="submit"
-            disabled={loading}
-            className="panel-gradient-btn w-full rounded-xl px-4 py-3 font-semibold transition-opacity hover:opacity-90 disabled:opacity-60"
-          >
-            {loading ? "Conectando..." : "Conectar"}
-          </button>
-        </form>
+            {error ? (
+              <div className="rounded-xl border border-destructive/40 bg-destructive/10 px-3.5 py-3 text-sm text-destructive">
+                {error}
+              </div>
+            ) : null}
+            <button
+              type="submit"
+              disabled={loading}
+              className="panel-gradient-btn w-full rounded-xl px-4 py-3 font-semibold transition-opacity hover:opacity-90 disabled:opacity-60"
+            >
+              {loading ? "Conectando..." : "Conectar"}
+            </button>
+          </form>
 
-        <button onClick={onSignOut} className="mt-4 w-full text-sm text-muted-foreground underline">
-          Sair da conta
-        </button>
+          <button
+            onClick={onSignOut}
+            className="mt-4 w-full text-sm text-muted-foreground underline"
+          >
+            Sair da conta
+          </button>
+        </div>
       </div>
     </main>
   );
@@ -224,6 +251,8 @@ function Dashboard({
 }) {
   const [notifyOn, setNotifyOn] = useState(true);
   const [kindFilter, setKindFilter] = useState<"" | "sales" | "recharge" | "gift">("");
+  const [confirm, setConfirm] = useState<null | "token" | "signout">(null);
+  const [detail, setDetail] = useState<NotificationRow | null>(null);
   const { permission, requestPermission, recent } = useStartNotifications(config, notifyOn);
   const key = config.base ?? "server";
 
